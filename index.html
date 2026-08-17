@@ -1,275 +1,93 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light" data-font-size="medium">
+<html lang="fr" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion de Plats et Menus</title>
+    <title>App Commandes</title>
     <style>
-        :root {
-            --bg-color: #f4f4f9;
-            --text-color: #333333;
-            --card-bg: #ffffff;
-            --primary-color: #ff6b6b;
-            --border-color: #dddddd;
-            --font-size: 16px;
-        }
-
-        [data-theme="dark"] {
-            --bg-color: #121212;
-            --text-color: #f4f4f9;
-            --card-bg: #1e1e1e;
-            --primary-color: #ff5252;
-            --border-color: #333333;
-        }
-
-        [data-font-size="small"] { --font-size: 14px; }
-        [data-font-size="medium"] { --font-size: 16px; }
-        [data-font-size="large"] { --font-size: 18px; }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: var(--font-size);
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        .phone-container {
-            width: 100%;
-            max-width: 420px;
-            background-color: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            min-height: 100vh;
-            padding-bottom: 80px;
-        }
-
-        header {
-            padding: 20px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.2em;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .content {
-            padding: 15px;
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .card h3 {
-            margin-bottom: 5px;
-        }
-
-        .actions-top {
-            display: flex;
-            gap: 10px;
-            padding: 10px 15px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.95em;
-        }
-
-        .btn:active {
-            opacity: 0.8;
-        }
-
-        /* Bottom Settings Bar */
-        .bottom-bar {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            max-width: 420px;
-            background-color: var(--card-bg);
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-around;
-            padding: 10px;
-            z-index: 100;
-        }
-
-        .settings-btn {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            cursor: pointer;
-            font-size: 0.9em;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Modal simple */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-        }
-
-        .modal-content {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            width: 85%;
-            max-width: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .modal-content input {
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            background: var(--bg-color);
-            color: var(--text-color);
-            font-size: 1em;
-        }
+        :root { --bg: #f4f4f9; --text: #333; --card: #fff; --accent: #ff6b6b; --primary: #333; }
+        [data-theme="dark"] { --bg: #121212; --text: #eee; --card: #1e1e1e; }
+        
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding-bottom: 80px; }
+        .container { padding: 15px; }
+        .card { background: var(--card); padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+        .card.selected { border-color: blue; background: #e3f2fd; }
+        
+        /* Menu déroulant */
+        .menu-overlay { position: fixed; bottom: 60px; right: 10px; background: #fff; border: 1px solid #ccc; display: none; padding: 10px; border-radius: 8px; z-index: 1000; }
+        .bottom-bar { position: fixed; bottom: 0; width: 100%; background: #eee; display: flex; justify-content: space-around; padding: 15px; }
+        
+        #addition { border-top: 2px solid #ccc; margin-top: 20px; }
+        .total-price { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="phone-container">
-        <header>Gestion de Commandes</header>
+<div class="container">
+    <h2>Catalogue</h2>
+    <div id="catalog"></div>
 
-        <div class="actions-top">
-            <button class="btn" onclick="openDishModal()">+ Ajouter Plat</button>
-            <button class="btn" onclick="openMenuModal()">+ Ajouter Menu</button>
-        </div>
+    <h2 id="addition-title">Addition</h2>
+    <div id="addition"></div>
+    <div class="total-price" id="totalDisplay">PRIX : 0 €</div>
+    <button onclick="clearOrder()">Finaliser la commande</button>
+</div>
 
-        <div class="content" id="listContainer">
-            <!-- Les blocs ajoutés s'afficheront ici -->
-        </div>
+<!-- Menu flottant -->
+<div class="menu-overlay" id="menuOverlay">
+    <button onclick="openModal('dish')">Ajouter Plat</button><br>
+    <button onclick="openModal('menu')">Ajouter Menu</button><br>
+    <button onclick="toggleTheme()">Mode Sombre/Clair</button>
+</div>
 
-        <!-- Barre de paramètres en bas -->
-        <div class="bottom-bar">
-            <button class="settings-btn" onclick="toggleTheme()">
-                🌓 <span>Mode</span>
-            </button>
-            <button class="settings-btn" onclick="changeFontSize()">
-                🔤 <span>Taille texte</span>
-            </button>
-        </div>
-    </div>
+<div class="bottom-bar">
+    <button onclick="toggleMenu()">☰ Menu</button>
+    <button onclick="window.scrollTo(0, document.body.scrollHeight)">Addition</button>
+</div>
 
-    <!-- Modal Plat -->
-    <div class="modal" id="dishModal">
-        <div class="modal-content">
-            <h3>Ajouter un plat</h3>
-            <input type="text" id="dishName" placeholder="Nom du plat (ex: Cheeseburger)">
-            <input type="number" id="dishPrice" placeholder="Prix (ex: 8.50)">
-            <button class="btn" onclick="saveDish()">Valider</button>
-            <button class="btn" style="background-color: #666;" onclick="closeModals()">Annuler</button>
-        </div>
-    </div>
+<script>
+    let catalog = JSON.parse(localStorage.getItem('catalog')) || [];
+    let order = JSON.parse(localStorage.getItem('order')) || [];
 
-    <!-- Modal Menu -->
-    <div class="modal" id="menuModal">
-        <div class="modal-content">
-            <h3>Ajouter un menu</h3>
-            <input type="text" id="menuName" placeholder="Nom du menu (ex: Menu Maxi)">
-            <input type="text" id="menuItems" placeholder="Plats inclus (ex: Pain, Cheeseburger)">
-            <button class="btn" onclick="saveMenu()">Valider</button>
-            <button class="btn" style="background-color: #666;" onclick="closeModals()">Annuler</button>
-        </div>
-    </div>
+    function render() {
+        const catDiv = document.getElementById('catalog');
+        catDiv.innerHTML = '';
+        catalog.forEach((item, index) => {
+            catDiv.innerHTML += `<div class="card" onclick="addToOrder(${index})">
+                <strong>${item.name}</strong> (${item.type})<br>
+                ${item.price} €</div>`;
+        });
+        
+        const addDiv = document.getElementById('addition');
+        addDiv.innerHTML = '';
+        let total = 0;
+        order.forEach((item, index) => {
+            total += parseFloat(item.price);
+            addDiv.innerHTML += `<div class="card selected" onclick="removeFromOrder(${index})">${item.name} - ${item.price} €</div>`;
+        });
+        document.getElementById('totalDisplay').innerText = "PRIX : " + total + " €";
+        localStorage.setItem('catalog', JSON.stringify(catalog));
+        localStorage.setItem('order', JSON.stringify(order));
+    }
 
-    <script>
-        const container = document.getElementById('listContainer');
+    function addToOrder(index) { order.push(catalog[index]); render(); }
+    function removeFromOrder(index) { order.splice(index, 1); render(); }
+    function clearOrder() { order = []; render(); alert("Commande finalisée !"); }
+    function toggleMenu() { document.getElementById('menuOverlay').style.display = (document.getElementById('menuOverlay').style.display === 'block') ? 'none' : 'block'; }
+    function toggleTheme() { document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
 
-        function openDishModal() {
-            document.getElementById('dishModal').style.display = 'flex';
+    // Fonctions simplifiées pour ajouter (à étendre avec des formulaires prompt ou modaux)
+    function openModal(type) {
+        const name = prompt("Nom :");
+        const price = prompt("Prix en euros :");
+        const cat = prompt("Type (Dessert, Boisson, etc.) :");
+        if(name && price) {
+            catalog.push({name, price, type: cat || "Autre"});
+            render();
         }
-
-        function openMenuModal() {
-            document.getElementById('menuModal').style.display = 'flex';
-        }
-
-        function closeModals() {
-            document.getElementById('dishModal').style.display = 'none';
-            document.getElementById('menuModal').style.display = 'none';
-        }
-
-        function saveDish() {
-            const name = document.getElementById('dishName').value;
-            const price = document.getElementById('dishPrice').value;
-            if(name && price) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `<h3>🍽️ ${name}</h3><p>Prix : ${price} €</p>`;
-                container.appendChild(card);
-                document.getElementById('dishName').value = '';
-                document.getElementById('dishPrice').value = '';
-                closeModals();
-            }
-        }
-
-        function saveMenu() {
-            const name = document.getElementById('menuName').value;
-            const items = document.getElementById('menuItems').value;
-            if(name) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `<h3>📋 Menu : ${name}</h3><p>Inclus : ${items || 'Aucun plat spécifié'}</p>`;
-                container.appendChild(card);
-                document.getElementById('menuName').value = '';
-                document.getElementById('menuItems').value = '';
-                closeModals();
-            }
-        }
-
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
-        }
-
-        function changeFontSize() {
-            const html = document.documentElement;
-            const currentSize = html.getAttribute('data-font-size');
-            let nextSize = 'medium';
-            if(currentSize === 'small') nextSize = 'medium';
-            else if(currentSize === 'medium') nextSize = 'large';
-            else if(currentSize === 'large') nextSize = 'small';
-            html.setAttribute('data-font-size', nextSize);
-        }
-    </script>
+    }
+    
+    render();
+</script>
 </body>
 </html>
