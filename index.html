@@ -109,6 +109,16 @@
             box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
         }
 
+        /* Style pour le texte "détail" en gras, souligné et petit sur les cartes */
+        .detail-btn {
+            font-size: 0.75em;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-top: 6px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
         /* Modal pour la suppression par appui prolongé */
         .modal-overlay {
             position: absolute;
@@ -163,7 +173,7 @@
             color: white;
         }
 
-        /* Modal pour la note personnalisée sur un plat */
+        /* Modal pour la note personnalisée */
         .note-modal-overlay {
             position: absolute;
             top: 0;
@@ -207,7 +217,6 @@
             font-size: 0.95em;
         }
 
-        /* Aperçu du ticket texte */
         .ticket-preview {
             background: #ffffff;
             color: #000000;
@@ -422,7 +431,7 @@
         </button>
     </div>
 
-    <!-- Modal pour l'appui prolongé (Suppression d'un article de l'addition) -->
+    <!-- Modal suppression appui prolongé -->
     <div class="modal-overlay" id="longPressModal">
         <div class="modal-content">
             <h3>Supprimer l'article ?</h3>
@@ -434,7 +443,7 @@
         </div>
     </div>
 
-    <!-- Modal pour ajouter/modifier la note sur un plat sélectionné -->
+    <!-- Modal pour les notes/spécialités -->
     <div class="note-modal-overlay" id="noteModal">
         <div class="note-modal-content">
             <h3>Ajouter une note / spécialité</h3>
@@ -456,7 +465,7 @@
         </div>
 
         <div class="form-group">
-            <label>Nom du Restaurant (Ticket)</label>
+            <label>Nom du Restaurant (En-tête Ticket)</label>
             <input type="text" id="restaurantNameInput" placeholder="Ex: Mon Super Burger" oninput="updateRestaurantName(this.value)">
         </div>
 
@@ -590,6 +599,7 @@
         } else if (type === 'dish') {
             const dish = dishes.find(d => d.id === id);
             if (dish) {
+                // Si le plat existe déjà sans note, on incrémente la quantité (x2, x3...)
                 const existingItem = order.find(o => o.id === id && !o.note);
                 if (existingItem) {
                     existingItem.quantity = (existingItem.quantity || 1) + 1;
@@ -608,7 +618,6 @@
         }
     }
 
-    // Appui prolongé pour supprimer un élément de la commande
     function startLongPress(index, event) {
         longPressTimer = setTimeout(() => {
             openLongPressModal(index);
@@ -626,8 +635,7 @@
         selectedOrderIndex = index;
         const item = order[index];
         if (item) {
-            document.getElementById('modalItemName').textContent = `${item.name} (x${item.quantity || 1})`;
-            
+            document.getElementById('modalItemName').textContent = `${item.name} ${item.quantity > 1 ? 'x' + item.quantity : ''}`;
             const cardColor = item.color || '#ffffff';
             const cancelBtn = document.getElementById('modalCancelBtn');
             cancelBtn.style.backgroundColor = cardColor;
@@ -651,11 +659,10 @@
         closeLongPressModal();
     }
 
-    // Gestion de la note/spécialité d'un plat dans l'addition
     function openNoteModal(index) {
         targetNoteIndex = index;
         const item = order[index];
-        document.getElementById('noteModalDishName').textContent = item.name;
+        document.getElementById('noteModalDishName').textContent = `${item.name} ${item.quantity > 1 ? 'x' + item.quantity : ''}`;
         document.getElementById('dishNoteInput').value = item.note || '';
         document.getElementById('noteModal').classList.add('open');
     }
@@ -675,7 +682,6 @@
         closeNoteModal();
     }
 
-    // Génération du texte formaté du ticket thermique (avec tirets, quantités, prix et nom en grand)
     function generateThermalTicketText() {
         let text = `================================\n`;
         text += `        ${restaurantName}\n`;
@@ -687,7 +693,7 @@
             const qty = item.quantity || 1;
             const itemTotal = parseFloat(item.price) * qty;
             total += itemTotal;
-            text += `${qty}x ${item.name} - ${itemTotal.toFixed(2)} €\n`;
+            text += `${item.name} x ${qty} ........... ${itemTotal.toFixed(2)} €\n`;
             if (item.note) {
                 text += `   -> Note: ${item.note}\n`;
             }
@@ -699,25 +705,22 @@
         return text;
     }
 
-    function finalizeAndCopyOrder() {
+    function copyTicketToClipboard() {
         const text = generateThermalTicketText();
-        
-        // Copie automatique dans le presse-papier
         navigator.clipboard.writeText(text).then(() => {
             showToast();
-        }).catch(err => {
-            console.error('Erreur lors de la copie :', err);
-            // Solution de repli basique si le presse-papier bloque
+        }).catch(() => {
             prompt("Copiez le texte ci-dessous :", text);
         });
 
-        // Affichage de l'aperçu dans l'UI
         const previewEl = document.getElementById('ticketPreviewContainer');
         if (previewEl) {
             previewEl.textContent = text;
         }
+    }
 
-        // Vider la commande après finalisation
+    function finalizeOrder() {
+        copyTicketToClipboard();
         order = [];
         saveData();
         setTimeout(() => {
@@ -804,13 +807,10 @@
                         onmouseleave="cancelLongPress()"
                         ontouchstart="startLongPress(${index}, event)" 
                         ontouchend="cancelLongPress()">
-                        <div><strong>${item.name}</strong> ${qty > 1 ? `x ${qty}` : ''}</div>
+                        <div><strong>${item.name} ${qty > 1 ? `x${qty}` : ''}</strong></div>
                         ${item.note ? `<div style="font-size:0.8em; margin-top:2px; font-style:italic;">Note: ${item.note}</div>` : ''}
-                        <div style="margin-top: 2px; font-size: 0.7em; opacity: 0.8;">(Appui prolongé = supprimer)</div>
-                        <div style="display:flex; gap:5px; margin-top:5px; width:100%;">
-                            <button onclick="event.stopPropagation(); openNoteModal(${index})" style="flex:1; padding:3px; font-size:0.75em; border-radius:4px; border:1px solid ${textColor}; background:transparent; color:${textColor}; cursor:pointer;">Note</button>
-                            <span style="font-size:0.9em; align-self:center;">${itemTotal.toFixed(2)} €</span>
-                        </div>
+                        <div style="margin-top: 2px; font-size: 0.9em;">${itemTotal.toFixed(2)} €</div>
+                        <span class="detail-btn" onclick="event.stopPropagation(); openNoteModal(${index})">détail</span>
                     </div>`;
                 });
                 html += '</div>';
@@ -821,8 +821,9 @@
             </div>`;
             
             if(order.length > 0) {
-                html += `<button class="btn-action" style="margin-top:15px; background-color:#2ecc71;" onclick="finalizeAndCopyOrder()">Finaliser & Copier le ticket</button>`;
-                html += `<div class="ticket-preview" id="ticketPreviewContainer">L'aperçu du ticket textuel apparaîtra ici après la finalisation...</div>`;
+                html += `<button class="btn-action" style="margin-top:15px; background-color:#34495e;" onclick="copyTicketToClipboard()">📋 Copier le texte du ticket</button>`;
+                html += `<button class="btn-action" style="margin-top:10px; background-color:#2ecc71;" onclick="finalizeOrder()"> Finaliser & Copier le ticket</button>`;
+                html += `<div class="ticket-preview" id="ticketPreviewContainer">Aperçu du ticket...</div>`;
             }
             
             content.innerHTML = html;
