@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Application de Commandes</title>
     
-    <!-- Configuration Web App PWA (Plein écran natif sur mobile sans bannière) -->
+    <!-- Configuration Web App PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -129,7 +129,7 @@
             display: inline-block;
         }
 
-        /* Toast notification masqué correctement hors écran */
+        /* Toast notification */
         .toast-notification {
             position: absolute;
             top: 0;
@@ -458,7 +458,7 @@
         </div>
     </div>
 
-    <!-- Modal d'édition d'un plat (Appui prolongé sur la carte d'un plat) -->
+    <!-- Modal d'édition d'un plat -->
     <div class="modal-overlay" id="editDishModal">
         <div class="modal-content" style="max-width: 340px; text-align: left;">
             <h3 style="text-align: center;">Modifier le plat</h3>
@@ -509,6 +509,8 @@
 
         <div class="form-group">
             <label>Affichage & Outils</label>
+            <!-- Bouton Plein Écran -->
+            <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="toggleFullscreen()">📺 Plein écran (Activer / Quitter)</button>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="toggleTheme()">Changer Sombre / Clair</button>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="changeFontSize()">Changer la taille du texte</button>
             <button class="btn-action btn-delete-mode" id="deleteModeBtn" onclick="toggleDeleteMode()">Activer le mode Suppression</button>
@@ -586,6 +588,28 @@
     function updateRestaurantName(val) {
         restaurantName = val.trim() ? val.trim().toUpperCase() : 'MON RESTAURANT';
         saveData();
+    }
+
+    /* Gestion du Mode Plein Écran */
+    function toggleFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            let docEl = document.documentElement;
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen();
+            } else if (docEl.webkitRequestFullscreen) { /* Safari / iOS */
+                docEl.webkitRequestFullscreen();
+            } else if (docEl.msRequestFullscreen) { /* IE/Edge */
+                docEl.msRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
     }
 
     function getContrastColor(hexcolor) {
@@ -716,7 +740,6 @@
                 dish.price = newPrice;
                 dish.color = newColor;
 
-                // Mettre aussi à jour dans la commande courante si présent
                 order.forEach(o => {
                     if (o.id === editingDishId) {
                         o.name = newName;
