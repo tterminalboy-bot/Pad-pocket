@@ -83,15 +83,14 @@
             padding: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
         }
 
-        /* Animation d'enfoncement au clic */
         .category-box:active, .item-card:active {
             transform: scale(0.95);
             box-shadow: inset 0 4px 6px rgba(0,0,0,0.2);
         }
 
-        /* Mode Suppression actif : bordure rouge clignotante ou spécifique */
         body.delete-mode .category-box, 
         body.delete-mode .item-card {
             border-color: #ff4757 !important;
@@ -106,6 +105,67 @@
         .item-card.selected {
             border-color: var(--selected-border);
             box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Style pour le petit texte doré, gras et souligné dans l'addition */
+        .gold-custom-text {
+            font-size: 0.75em;
+            font-weight: bold;
+            text-decoration: underline;
+            color: #d4af37;
+            margin-top: 6px;
+            cursor: pointer;
+        }
+
+        /* Modal / Panneau pour les détails personnalisés avec croix ronde */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 20px;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 3px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 360px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .round-close-btn {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: 2px solid var(--border-color);
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
 
         .bottom-nav {
@@ -212,7 +272,7 @@
             font-size: 0.85em;
         }
 
-        .form-group input, .form-group select {
+        .form-group input, .form-group select, .form-group textarea {
             padding: 8px;
             border: 2px solid var(--border-color);
             border-radius: 6px;
@@ -290,6 +350,19 @@
         </button>
     </div>
 
+    <!-- Modal pour les détails personnalisés du plat commandé -->
+    <div class="modal-overlay" id="customModal">
+        <div class="modal-content">
+            <div class="round-close-btn" onclick="closeCustomModal()">×</div>
+            <h3 id="modalDishTitle" style="margin-bottom: 10px;">Personnaliser le plat</h3>
+            <div class="form-group">
+                <label>Précisions (ex: sans viande, sans oignon, avec supplément...)</label>
+                <textarea id="modalDishNote" rows="4" placeholder="Écrivez vos instructions ici..."></textarea>
+            </div>
+            <button class="btn-action" onclick="saveCustomNote()">Enregistrer les détails</button>
+        </div>
+    </div>
+
     <div class="overlay-backdrop" id="overlayBackdrop" onclick="toggleOverlay()"></div>
 
     <div class="overlay-menu" id="overlayMenu">
@@ -302,7 +375,7 @@
             <label>Affichage & Outils</label>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="toggleTheme()">Changer Sombre / Clair</button>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="changeFontSize()">Changer la taille du texte</button>
-            <button class="btn-action btn-delete-mode" id="deleteModeBtn" onclick="toggleDeleteMode()">Activer le mode Suppression (Double-clic)</button>
+            <button class="btn-action btn-delete-mode" id="deleteModeBtn" onclick="toggleDeleteMode()">Activer le mode Suppression</button>
         </div>
 
         <div class="section-title">Ajouter une catégorie</div>
@@ -346,6 +419,7 @@
     let order = JSON.parse(localStorage.getItem('app_order')) || [];
     let currentView = 'home';
     let isDeleteMode = false;
+    let editingOrderUniqueId = null;
 
     function saveData() {
         localStorage.setItem('app_categories', JSON.stringify(categories));
@@ -369,11 +443,9 @@
         if (isDeleteMode) {
             document.body.classList.add('delete-mode');
             btn.textContent = 'Désactiver le mode Suppression';
-            btn.style.backgroundColor = '#c0392b';
         } else {
             document.body.classList.remove('delete-mode');
-            btn.textContent = 'Activer le mode Suppression (Double-clic)';
-            btn.style.backgroundColor = '#e74c3c';
+            btn.textContent = 'Activer le mode Suppression';
         }
         toggleOverlay();
         render();
@@ -381,53 +453,83 @@
 
     function handleElementClick(type, id) {
         if (isDeleteMode) {
-            // Ne fait rien au clic simple en mode suppression, on attend le double-clic
+            // Mode suppression actif : clic simple supprime avec confirmation
+            if (type === 'category') {
+                const cat = categories.find(c => c.id === id);
+                if (cat && confirm(`Voulez-vous vraiment supprimer la catégorie "${cat.name}" et tous ses plats ?`)) {
+                    categories = categories.filter(c => c.id !== id);
+                    dishes = dishes.filter(d => d.category !== id);
+                    saveData();
+                    render();
+                }
+            } else if (type === 'dish') {
+                const dish = dishes.find(d => d.id === id);
+                if (dish && confirm(`Voulez-vous vraiment supprimer le plat "${dish.name}" ?`)) {
+                    dishes = dishes.filter(d => d.id !== id);
+                    order = order.filter(o => o.id !== id);
+                    saveData();
+                    render();
+                }
+            }
             return;
         }
         
+        // Mode normal
         if (type === 'category') {
             openCategory(id);
         } else if (type === 'dish') {
-            // Ajout direct avec animation d'enfoncement gérée par le CSS :active, puis retour accueil
             const dish = dishes.find(d => d.id === id);
             if (dish) {
-                order.push(dish);
+                // On ajoute un identifiant unique (uniqueInstanceId) pour gérer plusieurs fois le même plat avec des options différentes
+                order.push({
+                    ...dish,
+                    uniqueInstanceId: 'ord_' + Date.now() + '_' + Math.random(),
+                    note: ''
+                });
                 saveData();
                 setTimeout(() => {
                     goHome();
-                }, 150); // Petit délai pour laisser voir l'effet visuel d'enfoncement
-            }
-        } else if (type === 'order_item') {
-            // Dans l'addition, cliquer permet de retirer le plat
-            const index = order.findIndex(o => o.id === id);
-            if (index > -1) {
-                order.splice(index, 1);
-                saveData();
-                render();
+                }, 150);
             }
         }
     }
 
-    function handleElementDoubleClick(type, id) {
-        if (!isDeleteMode) return;
+    function removeOrderItem(uniqueInstanceId) {
+        if (isDeleteMode) return;
+        const index = order.findIndex(o => o.uniqueInstanceId === uniqueInstanceId);
+        if (index > -1) {
+            order.splice(index, 1);
+            saveData();
+            render();
+        }
+    }
 
-        if (type === 'category') {
-            const cat = categories.find(c => c.id === id);
-            if (cat && confirm(`Voulez-vous vraiment supprimer la catégorie "${cat.name}" et tous ses plats associés ?`)) {
-                categories = categories.filter(c => c.id !== id);
-                dishes = dishes.filter(d => d.category !== id);
-                saveData();
-                render();
-            }
-        } else if (type === 'dish') {
-            const dish = dishes.find(d => d.id === id);
-            if (dish && confirm(`Voulez-vous vraiment supprimer le plat "${dish.name}" ?`)) {
-                dishes = dishes.filter(d => d.id !== id);
-                order = order.filter(o => o.id !== id);
+    function openCustomModal(uniqueInstanceId, event) {
+        event.stopPropagation(); // Évite de déclencher la suppression/retrait du plat
+        editingOrderUniqueId = uniqueInstanceId;
+        const item = order.find(o => o.uniqueInstanceId === uniqueInstanceId);
+        if (item) {
+            document.getElementById('modalDishTitle').textContent = `Détails : ${item.name}`;
+            document.getElementById('modalDishNote').value = item.note || '';
+            document.getElementById('customModal').classList.add('open');
+        }
+    }
+
+    function closeCustomModal() {
+        document.getElementById('customModal').classList.remove('open');
+        editingOrderUniqueId = null;
+    }
+
+    function saveCustomNote() {
+        if (editingOrderUniqueId) {
+            const item = order.find(o => o.uniqueInstanceId === editingOrderUniqueId);
+            if (item) {
+                item.note = document.getElementById('modalDishNote').value.trim();
                 saveData();
                 render();
             }
         }
+        closeCustomModal();
     }
 
     function render() {
@@ -435,7 +537,7 @@
         const content = document.getElementById('mainContent');
         content.innerHTML = '';
 
-        let bannerHtml = `<div class="delete-banner">⚠️ MODE SUPPRESSION ACTIF : Double-cliquez sur un élément pour le supprimer.</div>`;
+        let bannerHtml = `<div class="delete-banner">⚠️ MODE SUPPRESSION ACTIF : Cliquez sur un élément pour le supprimer.</div>`;
 
         if (currentView === 'home') {
             let html = bannerHtml;
@@ -446,8 +548,7 @@
                 categories.forEach(cat => {
                     const textColor = getContrastColor(cat.color);
                     html += `<div class="category-box" style="background-color: ${cat.color}; color: ${textColor};" 
-                        onclick="handleElementClick('category', '${cat.id}')" 
-                        ondblclick="handleElementDoubleClick('category', '${cat.id}')">
+                        onclick="handleElementClick('category', '${cat.id}')">
                         ${cat.name}
                     </div>`;
                 });
@@ -471,8 +572,7 @@
                     const cardColor = dish.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
                     html += `<div class="item-card" style="background-color: ${cardColor}; color: ${textColor};" 
-                        onclick="handleElementClick('dish', '${dish.id}')" 
-                        ondblclick="handleElementDoubleClick('dish', '${dish.id}')">
+                        onclick="handleElementClick('dish', '${dish.id}')">
                         <div><strong>${dish.name}</strong></div>
                         <div style="margin-top: 5px; font-size: 0.9em;">${dish.price} €</div>
                     </div>`;
@@ -495,10 +595,12 @@
                     const cardColor = item.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
                     html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" 
-                        onclick="handleElementClick('order_item', '${item.id}')">
+                        onclick="removeOrderItem('${item.uniqueInstanceId}')">
                         <div><strong>${item.name}</strong></div>
-                        <div style="margin-top: 5px; font-size: 0.9em;">(Cliquer pour retirer)</div>
-                        <div style="margin-top: 5px; font-size: 0.9em;">${item.price} €</div>
+                        <div style="margin-top: 3px; font-size: 0.8em; opacity: 0.8;">(Cliquer pour retirer)</div>
+                        <div style="margin-top: 3px; font-size: 0.9em;">${item.price} €</div>
+                        ${item.note ? `<div style="margin-top:2px; font-size:0.7em; font-style:italic;">Note: ${item.note}</div>` : ''}
+                        <div class="gold-custom-text" onclick="openCustomModal('${item.uniqueInstanceId}', event)">Sans viande / Détails</div>
                     </div>`;
                 });
                 html += '</div>';
