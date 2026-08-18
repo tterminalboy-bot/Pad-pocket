@@ -5,89 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App Commandes</title>
     <style>
-        :root { --bg: #f4f4f9; --text: #333; --card: #fff; --accent: #ff6b6b; --primary: #333; }
-        [data-theme="dark"] { --bg: #121212; --text: #eee; --card: #1e1e1e; }
+        :root { --bg: #f4f4f9; --card: #fff; --border: #333; }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
         
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding-bottom: 80px; }
-        .container { padding: 15px; }
-        .card { background: var(--card); padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
-        .card.selected { border-color: blue; background: #e3f2fd; }
+        /* Grille des catégories */
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; flex-grow: 1; }
+        .box { border: 3px solid var(--border); padding: 20px; text-align: center; font-weight: bold; cursor: pointer; border-radius: 10px; }
         
-        /* Menu déroulant */
-        .menu-overlay { position: fixed; bottom: 60px; right: 10px; background: #fff; border: 1px solid #ccc; display: none; padding: 10px; border-radius: 8px; z-index: 1000; }
-        .bottom-bar { position: fixed; bottom: 0; width: 100%; background: #eee; display: flex; justify-content: space-around; padding: 15px; }
-        
-        #addition { border-top: 2px solid #ccc; margin-top: 20px; }
-        .total-price { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
+        /* Barre du bas */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 70px; border-top: 3px solid var(--border); display: flex; background: var(--bg); }
+        .nav-item { flex: 1; display: flex; align-items: center; justify-content: center; border-right: 2px solid var(--border); cursor: pointer; }
+        .nav-item:last-child { border-right: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Catalogue</h2>
-    <div id="catalog"></div>
+    <div class="grid-container">
+        <div class="box" onclick="showCategory('plats')">les plats</div>
+        <div class="box"></div> <!-- Vide pour le design -->
+        <div class="box" onclick="showCategory('dessert')">dessert</div>
+        <div class="box"></div>
+        <div class="box" onclick="showCategory('apéro')">apéritif</div>
+        <div class="box"></div>
+    </div>
 
-    <h2 id="addition-title">Addition</h2>
-    <div id="addition"></div>
-    <div class="total-price" id="totalDisplay">PRIX : 0 €</div>
-    <button onclick="clearOrder()">Finaliser la commande</button>
-</div>
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="toggleMenu()">☰</div>
+        <div class="nav-item" onclick="goToAddition()">détails de la commande</div>
+    </div>
 
-<!-- Menu flottant -->
-<div class="menu-overlay" id="menuOverlay">
-    <button onclick="openModal('dish')">Ajouter Plat</button><br>
-    <button onclick="openModal('menu')">Ajouter Menu</button><br>
-    <button onclick="toggleTheme()">Mode Sombre/Clair</button>
-</div>
-
-<div class="bottom-bar">
-    <button onclick="toggleMenu()">☰ Menu</button>
-    <button onclick="window.scrollTo(0, document.body.scrollHeight)">Addition</button>
-</div>
-
-<script>
-    let catalog = JSON.parse(localStorage.getItem('catalog')) || [];
-    let order = JSON.parse(localStorage.getItem('order')) || [];
-
-    function render() {
-        const catDiv = document.getElementById('catalog');
-        catDiv.innerHTML = '';
-        catalog.forEach((item, index) => {
-            catDiv.innerHTML += `<div class="card" onclick="addToOrder(${index})">
-                <strong>${item.name}</strong> (${item.type})<br>
-                ${item.price} €</div>`;
-        });
-        
-        const addDiv = document.getElementById('addition');
-        addDiv.innerHTML = '';
-        let total = 0;
-        order.forEach((item, index) => {
-            total += parseFloat(item.price);
-            addDiv.innerHTML += `<div class="card selected" onclick="removeFromOrder(${index})">${item.name} - ${item.price} €</div>`;
-        });
-        document.getElementById('totalDisplay').innerText = "PRIX : " + total + " €";
-        localStorage.setItem('catalog', JSON.stringify(catalog));
-        localStorage.setItem('order', JSON.stringify(order));
-    }
-
-    function addToOrder(index) { order.push(catalog[index]); render(); }
-    function removeFromOrder(index) { order.splice(index, 1); render(); }
-    function clearOrder() { order = []; render(); alert("Commande finalisée !"); }
-    function toggleMenu() { document.getElementById('menuOverlay').style.display = (document.getElementById('menuOverlay').style.display === 'block') ? 'none' : 'block'; }
-    function toggleTheme() { document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
-
-    // Fonctions simplifiées pour ajouter (à étendre avec des formulaires prompt ou modaux)
-    function openModal(type) {
-        const name = prompt("Nom :");
-        const price = prompt("Prix en euros :");
-        const cat = prompt("Type (Dessert, Boisson, etc.) :");
-        if(name && price) {
-            catalog.push({name, price, type: cat || "Autre"});
-            render();
-        }
-    }
-    
-    render();
-</script>
+    <script>
+        function showCategory(cat) { alert("Affichage de la catégorie : " + cat); }
+        function toggleMenu() { alert("Ouverture du menu (Ajouter plat, taille texte, etc.)"); }
+        function goToAddition() { alert("Ouverture de l'addition"); }
+    </script>
 </body>
 </html>
