@@ -107,7 +107,6 @@
             box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        /* Style pour le petit texte doré, gras et souligné dans l'addition */
         .gold-custom-text {
             font-size: 0.75em;
             font-weight: bold;
@@ -117,7 +116,6 @@
             cursor: pointer;
         }
 
-        /* Modal / Panneau pour les détails personnalisés avec croix ronde */
         .modal-overlay {
             position: absolute;
             top: 0;
@@ -419,7 +417,7 @@
     let order = JSON.parse(localStorage.getItem('app_order')) || [];
     let currentView = 'home';
     let isDeleteMode = false;
-    let editingOrderUniqueId = null;
+    let editingOrderId = null;
 
     function saveData() {
         localStorage.setItem('app_categories', JSON.stringify(categories));
@@ -453,7 +451,6 @@
 
     function handleElementClick(type, id) {
         if (isDeleteMode) {
-            // Mode suppression actif : clic simple supprime avec confirmation
             if (type === 'category') {
                 const cat = categories.find(c => c.id === id);
                 if (cat && confirm(`Voulez-vous vraiment supprimer la catégorie "${cat.name}" et tous ses plats ?`)) {
@@ -474,18 +471,23 @@
             return;
         }
         
-        // Mode normal
         if (type === 'category') {
             openCategory(id);
         } else if (type === 'dish') {
             const dish = dishes.find(d => d.id === id);
             if (dish) {
-                // On ajoute un identifiant unique (uniqueInstanceId) pour gérer plusieurs fois le même plat avec des options différentes
-                order.push({
-                    ...dish,
-                    uniqueInstanceId: 'ord_' + Date.now() + '_' + Math.random(),
-                    note: ''
-                });
+                // Regroupement automatique : si le plat existe déjà dans la commande (sans note spécifique ou avec la même base), on incmente la quantité (x 2, x 3...)
+                const existingItem = order.find(o => o.id === id && !o.note);
+                if (existingItem) {
+                    existingItem.quantity = (existingItem.quantity || 1) + 1;
+                } else {
+                    order.push({
+                        ...dish,
+                        orderUniqueId: 'ord_' + Date.now() + '_' + Math.random(),
+                        quantity: 1,
+                        note: ''
+                    });
+                }
                 saveData();
                 setTimeout(() => {
                     goHome();
@@ -494,20 +496,24 @@
         }
     }
 
-    function removeOrderItem(uniqueInstanceId) {
+    function removeOrderItem(orderUniqueId) {
         if (isDeleteMode) return;
-        const index = order.findIndex(o => o.uniqueInstanceId === uniqueInstanceId);
+        const index = order.findIndex(o => o.orderUniqueId === orderUniqueId);
         if (index > -1) {
-            order.splice(index, 1);
+            if (order[index].quantity > 1) {
+                order[index].quantity -= 1;
+            } else {
+                order.splice(index, 1);
+            }
             saveData();
             render();
         }
     }
 
-    function openCustomModal(uniqueInstanceId, event) {
-        event.stopPropagation(); // Évite de déclencher la suppression/retrait du plat
-        editingOrderUniqueId = uniqueInstanceId;
-        const item = order.find(o => o.uniqueInstanceId === uniqueInstanceId);
+    function openCustomModal(orderUniqueId, event) {
+        event.stopPropagation();
+        editingOrderId = orderUniqueId;
+        const item = order.find(o => o.orderUniqueId === orderUniqueId);
         if (item) {
             document.getElementById('modalDishTitle').textContent = `Détails : ${item.name}`;
             document.getElementById('modalDishNote').value = item.note || '';
@@ -517,12 +523,12 @@
 
     function closeCustomModal() {
         document.getElementById('customModal').classList.remove('open');
-        editingOrderUniqueId = null;
+        editingOrderId = null;
     }
 
     function saveCustomNote() {
-        if (editingOrderUniqueId) {
-            const item = order.find(o => o.uniqueInstanceId === editingOrderUniqueId);
+        if (editingOrderId) {
+            const item = order.find(o => o.orderUniqueId === editingOrderId);
             if (item) {
                 item.note = document.getElementById('modalDishNote').value.trim();
                 saveData();
@@ -591,16 +597,18 @@
             } else {
                 html += '<div class="grid-container">';
                 order.forEach(item => {
-                    total += parseFloat(item.price);
+                    const itemTotal = parseFloat(item.price) * (item.quantity || 1);
+                    total += itemTotal;
                     const cardColor = item.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
+                    const qtyDisplay = item.quantity > 1 ? ` x ${item.quantity}` : '';
                     html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" 
-                        onclick="removeOrderItem('${item.uniqueInstanceId}')">
-                        <div><strong>${item.name}</strong></div>
+                        onclick="removeOrderItem('${item.orderUniqueId}')">
+                        <div><strong>${item.name}</strong>${qtyDisplay}</div>
                         <div style="margin-top: 3px; font-size: 0.8em; opacity: 0.8;">(Cliquer pour retirer)</div>
-                        <div style="margin-top: 3px; font-size: 0.9em;">${item.price} €</div>
+                        <div style="margin-top: 3px; font-size: 0.9em;">${itemTotal.toFixed(2)} €</div>
                         ${item.note ? `<div style="margin-top:2px; font-size:0.7em; font-style:italic;">Note: ${item.note}</div>` : ''}
-                        <div class="gold-custom-text" onclick="openCustomModal('${item.uniqueInstanceId}', event)">Sans viande / Détails</div>
+                        <div class="gold-custom-text" onclick="openCustomModal('${item.orderUniqueId}', event)">Sans viande / Détails</div>
                     </div>`;
                 });
                 html += '</div>';
