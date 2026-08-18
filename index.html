@@ -56,7 +56,6 @@
             height: 100%;
         }
 
-        /* Contenu principal (Grille ou Addition) */
         .main-content {
             flex: 1;
             overflow-y: auto;
@@ -64,7 +63,6 @@
             padding-bottom: 90px;
         }
 
-        /* Grille des catégories façon plan */
         .grid-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -82,17 +80,12 @@
             font-weight: bold;
             cursor: pointer;
             background-color: var(--card-bg);
+            color: var(--text-color);
             text-align: center;
             padding: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.1s;
         }
 
-        .category-box:active {
-            transform: scale(0.97);
-        }
-
-        /* Liste des éléments dans une catégorie */
         .items-grid {
             display: flex;
             flex-direction: column;
@@ -101,6 +94,7 @@
 
         .item-card {
             background-color: var(--card-bg);
+            color: var(--text-color);
             border: 2px solid var(--border-color);
             padding: 15px;
             border-radius: 8px;
@@ -115,7 +109,6 @@
             border-color: var(--primary);
         }
 
-        /* Barre de navigation du bas */
         .bottom-nav {
             position: absolute;
             bottom: 0;
@@ -153,14 +146,29 @@
             line-height: 1;
         }
 
-        /* Panneau coulissant (Overlay Menu) */
+        /* Overlay semi-transparent pour fermer en cliquant à côté */
+        .overlay-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 99;
+        }
+        .overlay-backdrop.open {
+            display: block;
+        }
+
         .overlay-menu {
             position: absolute;
             bottom: -100%;
             left: 0;
             width: 100%;
-            height: 85%;
+            max-height: 80%;
             background-color: var(--card-bg);
+            color: var(--text-color);
             border-top: 3px solid var(--border-color);
             border-radius: 20px 20px 0 0;
             transition: bottom 0.3s ease-in-out;
@@ -179,7 +187,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 10px;
         }
@@ -194,47 +202,46 @@
             color: var(--text-color);
         }
 
-        /* Formulaires internes propres */
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 4px;
         }
 
         .form-group label {
             font-weight: bold;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
 
         .form-group input, .form-group select {
-            padding: 10px;
+            padding: 8px;
             border: 2px solid var(--border-color);
             border-radius: 6px;
             background: var(--bg-color);
             color: var(--text-color);
-            font-size: 1em;
+            font-size: 0.95em;
         }
 
         .btn-action {
             background-color: var(--primary);
             color: white;
             border: 2px solid var(--border-color);
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         .section-title {
-            margin: 15px 0 10px 0;
-            font-size: 1.1em;
+            margin: 12px 0 8px 0;
+            font-size: 1em;
             border-bottom: 1px dashed var(--border-color);
-            padding-bottom: 5px;
+            padding-bottom: 4px;
+            font-weight: bold;
         }
 
-        /* Section Addition */
         .addition-total {
             margin-top: 20px;
             padding: 15px;
@@ -254,12 +261,10 @@
 
 <div class="phone-frame">
     
-    <!-- Contenu dynamique -->
     <div class="main-content" id="mainContent">
-        <!-- Généré dynamiquement en JS -->
+        <!-- Dynamique -->
     </div>
 
-    <!-- Barre du bas fixe -->
     <div class="bottom-nav">
         <button class="nav-btn" onclick="toggleOverlay()">
             <span class="hamburger-icon">☰</span>
@@ -270,31 +275,30 @@
         </button>
     </div>
 
-    <!-- Panneau de configuration (Menu coulissant sans popups) -->
+    <!-- Fond sombre cliquable pour fermer -->
+    <div class="overlay-backdrop" id="overlayBackdrop" onclick="toggleOverlay()"></div>
+
+    <!-- Panneau coulissant -->
     <div class="overlay-menu" id="overlayMenu">
         <div class="overlay-header">
-            <h2>Paramètres & Ajouts</h2>
+            <h2>Paramètres & Gestion</h2>
             <button class="close-btn" onclick="toggleOverlay()">Fermer</button>
         </div>
 
         <div class="form-group">
-            <label>Mode d'affichage</label>
+            <label>Affichage</label>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="toggleTheme()">Changer Sombre / Clair</button>
-        </div>
-
-        <div class="form-group">
-            <label>Taille du texte</label>
-            <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="changeFontSize()">Changer la taille</button>
+            <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="changeFontSize()">Changer la taille du texte</button>
         </div>
 
         <div class="section-title">Ajouter une catégorie</div>
         <div class="form-group">
             <label>Nom de la catégorie</label>
-            <input type="text" id="newCatName" placeholder="Ex: Boissons, Desserts...">
+            <input type="text" id="newCatName" placeholder="Ex: Entrées, Plats...">
         </div>
         <div class="form-group">
             <label>Couleur de fond</label>
-            <input type="color" id="newCatColor" value="#ffccd5">
+            <input type="color" id="newCatColor" value="#ffffff">
         </div>
         <button class="btn-action" onclick="addCategory()">Créer la catégorie</button>
 
@@ -308,9 +312,9 @@
             <input type="number" id="newDishPrice" placeholder="Prix">
         </div>
         <div class="form-group">
-            <label>Catégorie parente</label>
+            <label>Catégorie</label>
             <select id="newDishCategory">
-                <!-- Rempli dynamiquement -->
+                <!-- Dynamique -->
             </select>
         </div>
         <button class="btn-action" onclick="addDish()">Ajouter le plat</button>
@@ -319,16 +323,10 @@
 </div>
 
 <script>
-    // Données initiales sauvegardées en local
-    let categories = JSON.parse(localStorage.getItem('app_categories')) || [
-        { id: 'plats', name: 'les plats', color: '#ffffff' },
-        { id: 'dessert', name: 'dessert', color: '#ffffff' },
-        { id: 'aperitif', name: 'apéritif', color: '#ffffff' }
-    ];
-
+    let categories = JSON.parse(localStorage.getItem('app_categories')) || [];
     let dishes = JSON.parse(localStorage.getItem('app_dishes')) || [];
     let order = JSON.parse(localStorage.getItem('app_order')) || [];
-    let currentView = 'home'; // 'home', 'category_<id>', 'addition'
+    let currentView = 'home';
 
     function saveData() {
         localStorage.setItem('app_categories', JSON.stringify(categories));
@@ -341,14 +339,18 @@
         content.innerHTML = '';
 
         if (currentView === 'home') {
-            let gridHtml = '<div class="grid-container">';
-            categories.forEach(cat => {
-                gridHtml += `<div class="category-box" style="background-color: ${cat.color}" onclick="openCategory('${cat.id}')">
-                    ${cat.name}
-                </div>`;
-            });
-            gridHtml += '</div>';
-            content.innerHTML = gridHtml;
+            if (categories.length === 0) {
+                content.innerHTML = `<p style="text-align:center; margin-top:40px;">Aucune catégorie pour le moment.<br>Ouvrez le menu ☰ en bas pour en créer une !</p>`;
+            } else {
+                let gridHtml = '<div class="grid-container">';
+                categories.forEach(cat => {
+                    gridHtml += `<div class="category-box" style="background-color: ${cat.color}" onclick="openCategory('${cat.id}')">
+                        ${cat.name}
+                    </div>`;
+                });
+                gridHtml += '</div>';
+                content.innerHTML = gridHtml;
+            }
         } else if (currentView.startsWith('category_')) {
             const catId = currentView.split('_')[1];
             const cat = categories.find(c => c.id === catId);
@@ -359,7 +361,7 @@
             html += '<div class="items-grid">';
             
             if (filteredDishes.length === 0) {
-                html += `<p style="text-align:center; margin-top:20px;">Aucun élément dans cette catégorie.</p>`;
+                html += `<p style="text-align:center; margin-top:20px;">Aucun plat dans cette catégorie.</p>`;
             } else {
                 filteredDishes.forEach(dish => {
                     const isInOrder = order.some(o => o.id === dish.id);
@@ -448,14 +450,16 @@
 
     function toggleOverlay() {
         const menu = document.getElementById('overlayMenu');
+        const backdrop = document.getElementById('overlayBackdrop');
         menu.classList.toggle('open');
+        backdrop.classList.toggle('open');
     }
 
     function addCategory() {
         const name = document.getElementById('newCatName').value.trim();
         const color = document.getElementById('newCatColor').value;
         if (name) {
-            const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const id = 'cat_' + Date.now();
             categories.push({ id, name, color });
             document.getElementById('newCatName').value = '';
             saveData();
@@ -468,7 +472,7 @@
         const name = document.getElementById('newDishName').value.trim();
         const price = document.getElementById('newDishPrice').value;
         const category = document.getElementById('newDishCategory').value;
-        if (name && price) {
+        if (name && price && category) {
             const id = 'dish_' + Date.now();
             dishes.push({ id, name, price, category });
             document.getElementById('newDishName').value = '';
@@ -476,6 +480,8 @@
             saveData();
             render();
             toggleOverlay();
+        } else {
+            alert('Veuillez remplir tous les champs et créer au moins une catégorie.');
         }
     }
 
@@ -495,7 +501,6 @@
         html.setAttribute('data-font-size', next);
     }
 
-    // Premier affichage
     render();
 </script>
 </body>
