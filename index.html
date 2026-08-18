@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application de Commandes</title>
+    <title>Application de Commandes & Copie Ticket</title>
     <style>
         :root {
             --bg-color: #f7f7f9;
@@ -109,7 +109,7 @@
             box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        /* Modal pour la suppression par appui prolongé dans l'addition */
+        /* Modal pour la suppression par appui prolongé */
         .modal-overlay {
             position: absolute;
             top: 0;
@@ -161,6 +161,82 @@
         .btn-confirm-delete {
             background-color: #e74c3c;
             color: white;
+        }
+
+        /* Modal pour la note personnalisée sur un plat */
+        .note-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 20px;
+        }
+        .note-modal-overlay.open {
+            display: flex;
+        }
+
+        .note-modal-content {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 3px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 340px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .note-modal-content textarea {
+            width: 100%;
+            height: 80px;
+            padding: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            resize: none;
+            font-size: 0.95em;
+        }
+
+        /* Aperçu du ticket texte */
+        .ticket-preview {
+            background: #ffffff;
+            color: #000000;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border: 2px dashed #000000;
+            border-radius: 8px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        .toast-notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease-in-out;
+            z-index: 300;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
         }
 
         .bottom-nav {
@@ -333,6 +409,7 @@
 
 <div class="phone-frame">
     
+    <div class="toast-notification" id="toastNotification">Ticket copié dans le presse-papier !</div>
     <div class="main-content" id="mainContent"></div>
 
     <div class="bottom-nav">
@@ -345,14 +422,27 @@
         </button>
     </div>
 
-    <!-- Modal pour l'appui prolongé sur un plat de l'addition -->
+    <!-- Modal pour l'appui prolongé (Suppression d'un article de l'addition) -->
     <div class="modal-overlay" id="longPressModal">
-        <div class="modal-content" id="longPressModalContent">
+        <div class="modal-content">
             <h3>Supprimer l'article ?</h3>
             <p id="modalItemName" style="font-weight: bold;"></p>
             <div class="modal-buttons">
                 <button class="modal-btn btn-confirm-delete" onclick="confirmDeleteOrderItem()">Supprimer</button>
                 <button class="modal-btn" id="modalCancelBtn" onclick="closeLongPressModal()">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter/modifier la note sur un plat sélectionné -->
+    <div class="note-modal-overlay" id="noteModal">
+        <div class="note-modal-content">
+            <h3>Ajouter une note / spécialité</h3>
+            <p id="noteModalDishName" style="font-size: 0.9em; opacity: 0.8;"></p>
+            <textarea id="dishNoteInput" placeholder="Ex: Sans oignon, cuisson à point..."></textarea>
+            <div class="modal-buttons">
+                <button class="modal-btn btn-confirm-delete" style="background-color: #2ecc71;" onclick="saveDishNote()">Valider</button>
+                <button class="modal-btn" onclick="closeNoteModal()">Annuler</button>
             </div>
         </div>
     </div>
@@ -363,6 +453,11 @@
         <div class="overlay-header">
             <h2>Paramètres & Gestion</h2>
             <button class="close-btn" onclick="toggleOverlay()">Fermer</button>
+        </div>
+
+        <div class="form-group">
+            <label>Nom du Restaurant (Ticket)</label>
+            <input type="text" id="restaurantNameInput" placeholder="Ex: Mon Super Burger" oninput="updateRestaurantName(this.value)">
         </div>
 
         <div class="form-group">
@@ -408,6 +503,7 @@
 </div>
 
 <script>
+    let restaurantName = localStorage.getItem('app_restaurant_name') || 'MON RESTAURANT';
     let categories = JSON.parse(localStorage.getItem('app_categories')) || [];
     let dishes = JSON.parse(localStorage.getItem('app_dishes')) || [];
     let order = JSON.parse(localStorage.getItem('app_order')) || [];
@@ -416,11 +512,31 @@
     
     let longPressTimer = null;
     let selectedOrderIndex = null;
+    let targetNoteIndex = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (!localStorage.getItem('app_restaurant_name')) {
+            let userResto = prompt("Entrez le nom de votre restaurant :", "Mon Super Restaurant");
+            if (userResto) {
+                restaurantName = userResto.trim().toUpperCase();
+                localStorage.setItem('app_restaurant_name', restaurantName);
+            }
+        }
+        const restoInput = document.getElementById('restaurantNameInput');
+        if (restoInput) restoInput.value = restaurantName;
+        render();
+    });
 
     function saveData() {
         localStorage.setItem('app_categories', JSON.stringify(categories));
         localStorage.setItem('app_dishes', JSON.stringify(dishes));
         localStorage.setItem('app_order', JSON.stringify(order));
+        localStorage.setItem('app_restaurant_name', restaurantName);
+    }
+
+    function updateRestaurantName(val) {
+        restaurantName = val.trim() ? val.trim().toUpperCase() : 'MON RESTAURANT';
+        saveData();
     }
 
     function getContrastColor(hexcolor) {
@@ -474,14 +590,14 @@
         } else if (type === 'dish') {
             const dish = dishes.find(d => d.id === id);
             if (dish) {
-                // Système de regroupement x2, x3... si le plat est déjà présent dans la commande
-                const existingItem = order.find(o => o.id === id);
+                const existingItem = order.find(o => o.id === id && !o.note);
                 if (existingItem) {
                     existingItem.quantity = (existingItem.quantity || 1) + 1;
                 } else {
                     order.push({
                         ...dish,
-                        quantity: 1
+                        quantity: 1,
+                        note: ''
                     });
                 }
                 saveData();
@@ -492,12 +608,11 @@
         }
     }
 
-    // Gestion de l'appui prolongé sur les éléments de l'addition
+    // Appui prolongé pour supprimer un élément de la commande
     function startLongPress(index, event) {
-        // Empêche le comportement par défaut si nécessaire
         longPressTimer = setTimeout(() => {
             openLongPressModal(index);
-        }, 600); // 600ms pour un appui prolongé
+        }, 600);
     }
 
     function cancelLongPress() {
@@ -513,7 +628,6 @@
         if (item) {
             document.getElementById('modalItemName').textContent = `${item.name} (x${item.quantity || 1})`;
             
-            // Styliser le bouton annuler selon la couleur du plat (noir ou blanc selon le contraste ou couleur de fond)
             const cardColor = item.color || '#ffffff';
             const cancelBtn = document.getElementById('modalCancelBtn');
             cancelBtn.style.backgroundColor = cardColor;
@@ -535,6 +649,88 @@
             render();
         }
         closeLongPressModal();
+    }
+
+    // Gestion de la note/spécialité d'un plat dans l'addition
+    function openNoteModal(index) {
+        targetNoteIndex = index;
+        const item = order[index];
+        document.getElementById('noteModalDishName').textContent = item.name;
+        document.getElementById('dishNoteInput').value = item.note || '';
+        document.getElementById('noteModal').classList.add('open');
+    }
+
+    function closeNoteModal() {
+        document.getElementById('noteModal').classList.remove('open');
+        targetNoteIndex = null;
+    }
+
+    function saveDishNote() {
+        if (targetNoteIndex !== null && order[targetNoteIndex]) {
+            const noteText = document.getElementById('dishNoteInput').value.trim();
+            order[targetNoteIndex].note = noteText;
+            saveData();
+            render();
+        }
+        closeNoteModal();
+    }
+
+    // Génération du texte formaté du ticket thermique (avec tirets, quantités, prix et nom en grand)
+    function generateThermalTicketText() {
+        let text = `================================\n`;
+        text += `        ${restaurantName}\n`;
+        text += `================================\n`;
+        text += `Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}\n`;
+        text += `--------------------------------\n`;
+        let total = 0;
+        order.forEach(item => {
+            const qty = item.quantity || 1;
+            const itemTotal = parseFloat(item.price) * qty;
+            total += itemTotal;
+            text += `${qty}x ${item.name} - ${itemTotal.toFixed(2)} €\n`;
+            if (item.note) {
+                text += `   -> Note: ${item.note}\n`;
+            }
+        });
+        text += `--------------------------------\n`;
+        text += `TOTAL : ${total.toFixed(2)} €\n`;
+        text += `================================\n`;
+        text += `       MERCI DE VOTRE VISITE    \n`;
+        return text;
+    }
+
+    function finalizeAndCopyOrder() {
+        const text = generateThermalTicketText();
+        
+        // Copie automatique dans le presse-papier
+        navigator.clipboard.writeText(text).then(() => {
+            showToast();
+        }).catch(err => {
+            console.error('Erreur lors de la copie :', err);
+            // Solution de repli basique si le presse-papier bloque
+            prompt("Copiez le texte ci-dessous :", text);
+        });
+
+        // Affichage de l'aperçu dans l'UI
+        const previewEl = document.getElementById('ticketPreviewContainer');
+        if (previewEl) {
+            previewEl.textContent = text;
+        }
+
+        // Vider la commande après finalisation
+        order = [];
+        saveData();
+        setTimeout(() => {
+            render();
+        }, 1200);
+    }
+
+    function showToast() {
+        const toast = document.getElementById('toastNotification');
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
     }
 
     function render() {
@@ -587,7 +783,7 @@
             content.innerHTML = html;
         } else if (currentView === 'addition') {
             let html = bannerHtml;
-            html += `<h2>Addition</h2>`;
+            html += `<h2>Détails de la commande</h2>`;
             html += `<button class="btn-action" style="margin-bottom:15px; width:auto;" onclick="goHome()">← Retour au menu</button>`;
             
             let total = 0;
@@ -609,8 +805,12 @@
                         ontouchstart="startLongPress(${index}, event)" 
                         ontouchend="cancelLongPress()">
                         <div><strong>${item.name}</strong> ${qty > 1 ? `x ${qty}` : ''}</div>
-                        <div style="margin-top: 3px; font-size: 0.75em; opacity: 0.8;">(Appui prolongé pour supprimer)</div>
-                        <div style="margin-top: 3px; font-size: 0.9em;">${itemTotal.toFixed(2)} €</div>
+                        ${item.note ? `<div style="font-size:0.8em; margin-top:2px; font-style:italic;">Note: ${item.note}</div>` : ''}
+                        <div style="margin-top: 2px; font-size: 0.7em; opacity: 0.8;">(Appui prolongé = supprimer)</div>
+                        <div style="display:flex; gap:5px; margin-top:5px; width:100%;">
+                            <button onclick="event.stopPropagation(); openNoteModal(${index})" style="flex:1; padding:3px; font-size:0.75em; border-radius:4px; border:1px solid ${textColor}; background:transparent; color:${textColor}; cursor:pointer;">Note</button>
+                            <span style="font-size:0.9em; align-self:center;">${itemTotal.toFixed(2)} €</span>
+                        </div>
                     </div>`;
                 });
                 html += '</div>';
@@ -621,7 +821,8 @@
             </div>`;
             
             if(order.length > 0) {
-                html += `<button class="btn-action" style="margin-top:15px; background-color:#2ecc71;" onclick="finalizeOrder()">Finaliser la commande</button>`;
+                html += `<button class="btn-action" style="margin-top:15px; background-color:#2ecc71;" onclick="finalizeAndCopyOrder()">Finaliser & Copier le ticket</button>`;
+                html += `<div class="ticket-preview" id="ticketPreviewContainer">L'aperçu du ticket textuel apparaîtra ici après la finalisation...</div>`;
             }
             
             content.innerHTML = html;
@@ -652,13 +853,6 @@
     }
 
     function goHome() {
-        currentView = 'home';
-        render();
-    }
-
-    function finalizeOrder() {
-        order = [];
-        saveData();
         currentView = 'home';
         render();
     }
@@ -727,8 +921,6 @@
         else if (current === 'large') next = 'small';
         html.setAttribute('data-font-size', next);
     }
-
-    render();
 </script>
 </body>
 </html>
