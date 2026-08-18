@@ -11,7 +11,7 @@
             --card-bg: #ffffff;
             --border-color: #222222;
             --primary: #ff4757;
-            --selected-bg: #e8f4fd;
+            --selected-border: #0056b3;
             --font-size: 16px;
         }
 
@@ -21,7 +21,7 @@
             --card-bg: #1e1e1e;
             --border-color: #ffffff;
             --primary: #ff6b81;
-            --selected-bg: #1a365d;
+            --selected-border: #63b3ed;
         }
 
         [data-font-size="small"] { --font-size: 14px; }
@@ -69,7 +69,7 @@
             gap: 15px;
         }
 
-        .category-box {
+        .category-box, .item-card {
             border: 3px solid var(--border-color);
             border-radius: 12px;
             min-height: 110px;
@@ -80,30 +80,18 @@
             font-weight: bold;
             cursor: pointer;
             text-align: center;
-            padding: 10px;
+            padding: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
         }
 
-        .items-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .item-card {
-            border: 2px solid var(--border-color);
-            padding: 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        .category-box:active, .item-card:active {
+            transform: scale(0.97);
         }
 
         .item-card.selected {
-            border-color: var(--primary);
-            box-shadow: inset 0 0 0 3px var(--primary);
+            border-color: var(--selected-border);
+            box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .bottom-nav {
@@ -257,9 +245,7 @@
 
 <div class="phone-frame">
     
-    <div class="main-content" id="mainContent">
-        <!-- Dynamique -->
-    </div>
+    <div class="main-content" id="mainContent"></div>
 
     <div class="bottom-nav">
         <button class="nav-btn" onclick="toggleOverlay()">
@@ -332,7 +318,6 @@
         localStorage.setItem('app_order', JSON.stringify(order));
     }
 
-    // Fonction pour calculer si une couleur est claire ou foncée afin d'adapter le texte automatiquement
     function getContrastColor(hexcolor) {
         if (!hexcolor) return '#000000';
         const cleanHex = hexcolor.replace('#', '');
@@ -344,6 +329,7 @@
     }
 
     function render() {
+        updateCategorySelect();
         const content = document.getElementById('mainContent');
         content.innerHTML = '';
 
@@ -362,49 +348,50 @@
                 content.innerHTML = gridHtml;
             }
         } else if (currentView.startsWith('category_')) {
-            const catId = currentView.split('_')[1];
+            const catId = currentView.replace('category_', '');
             const cat = categories.find(c => c.id === catId);
-            const filteredDishes = dishes.filter(d => d.category === catId);
+            // Comparaison stricte des identifiants de catégorie
+            const filteredDishes = dishes.filter(d => String(d.category) === String(catId));
 
             let html = `<h2>${cat ? cat.name : 'Catégorie'}</h2>`;
-            html += `<button class="btn-action" style="margin-bottom:15px;" onclick="goHome()">← Retour</button>`;
-            html += '<div class="items-grid">';
+            html += `<button class="btn-action" style="margin-bottom:15px; width:auto;" onclick="goHome()">← Retour</button>`;
             
             if (filteredDishes.length === 0) {
                 html += `<p style="text-align:center; margin-top:20px;">Aucun plat dans cette catégorie.</p>`;
             } else {
+                html += '<div class="grid-container">';
                 filteredDishes.forEach(dish => {
                     const isInOrder = order.some(o => o.id === dish.id);
                     const cardColor = dish.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
                     html += `<div class="item-card ${isInOrder ? 'selected' : ''}" style="background-color: ${cardColor}; color: ${textColor};" onclick="toggleOrderItem('${dish.id}')">
-                        <span><strong>${dish.name}</strong></span>
-                        <span>${dish.price} €</span>
+                        <div><strong>${dish.name}</strong></div>
+                        <div style="margin-top: 5px; font-size: 0.9em;">${dish.price} €</div>
                     </div>`;
                 });
+                html += '</div>';
             }
-            html += '</div>';
             content.innerHTML = html;
         } else if (currentView === 'addition') {
             let html = `<h2>Addition</h2>`;
-            html += `<button class="btn-action" style="margin-bottom:15px;" onclick="goHome()">← Retour au menu</button>`;
-            html += '<div class="items-grid">';
+            html += `<button class="btn-action" style="margin-bottom:15px; width:auto;" onclick="goHome()">← Retour au menu</button>`;
             
             let total = 0;
             if (order.length === 0) {
                 html += `<p style="text-align:center; margin-top:20px;">Aucune commande en cours.</p>`;
             } else {
+                html += '<div class="grid-container">';
                 order.forEach(item => {
                     total += parseFloat(item.price);
                     const cardColor = item.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
                     html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" onclick="toggleOrderItem('${item.id}')">
-                        <span><strong>${item.name}</strong> (Cliquer pour retirer)</span>
-                        <span>${item.price} €</span>
+                        <div><strong>${item.name}</strong></div>
+                        <div style="margin-top: 5px; font-size: 0.9em;">${item.price} €</div>
                     </div>`;
                 });
+                html += '</div>';
             }
-            html += '</div>';
             
             html += `<div class="addition-total">
                 PRIX : <span>${total.toFixed(2)} €</span>
@@ -416,16 +403,19 @@
             
             content.innerHTML = html;
         }
-
-        updateCategorySelect();
     }
 
     function updateCategorySelect() {
         const select = document.getElementById('newDishCategory');
+        if (!select) return;
+        const currentSelected = select.value;
         select.innerHTML = '';
         categories.forEach(cat => {
             select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
         });
+        if (currentSelected) {
+            select.value = currentSelected;
+        }
     }
 
     function openCategory(catId) {
@@ -470,33 +460,44 @@
     }
 
     function addCategory() {
-        const name = document.getElementById('newCatName').value.trim();
-        const color = document.getElementById('newCatColor').value;
+        const nameInput = document.getElementById('newCatName');
+        const colorInput = document.getElementById('newCatColor');
+        const name = nameInput.value.trim();
+        const color = colorInput.value;
+        
         if (name) {
             const id = 'cat_' + Date.now();
             categories.push({ id, name, color });
-            document.getElementById('newCatName').value = '';
-            saveData();
-            render();
-            toggleOverlay();
-        }
-    }
-
-    function addDish() {
-        const name = document.getElementById('newDishName').value.trim();
-        const price = document.getElementById('newDishPrice').value;
-        const color = document.getElementById('newDishColor').value;
-        const category = document.getElementById('newDishCategory').value;
-        if (name && price && category) {
-            const id = 'dish_' + Date.now();
-            dishes.push({ id, name, price, color, category });
-            document.getElementById('newDishName').value = '';
-            document.getElementById('newDishPrice').value = '';
+            nameInput.value = '';
             saveData();
             render();
             toggleOverlay();
         } else {
-            alert('Veuillez remplir tous les champs et créer au moins une catégorie.');
+            alert('Veuillez entrer un nom de catégorie.');
+        }
+    }
+
+    function addDish() {
+        const nameInput = document.getElementById('newDishName');
+        const priceInput = document.getElementById('newDishPrice');
+        const colorInput = document.getElementById('newDishColor');
+        const categorySelect = document.getElementById('newDishCategory');
+
+        const name = nameInput.value.trim();
+        const price = priceInput.value;
+        const color = colorInput.value;
+        const category = categorySelect.value;
+
+        if (name && price && category) {
+            const id = 'dish_' + Date.now();
+            dishes.push({ id, name, price, color, category });
+            nameInput.value = '';
+            priceInput.value = '';
+            saveData();
+            render();
+            toggleOverlay();
+        } else {
+            alert('Veuillez remplir tous les champs et vous assurer qu\'une catégorie est sélectionnée.');
         }
     }
 
