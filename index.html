@@ -82,11 +82,25 @@
             text-align: center;
             padding: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.1s;
+            transition: transform 0.1s, box-shadow 0.1s;
         }
 
+        /* Animation d'enfoncement au clic */
         .category-box:active, .item-card:active {
-            transform: scale(0.97);
+            transform: scale(0.95);
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        /* Mode Suppression actif : bordure rouge clignotante ou spécifique */
+        body.delete-mode .category-box, 
+        body.delete-mode .item-card {
+            border-color: #ff4757 !important;
+            animation: pulse-delete 1s infinite alternate;
+        }
+
+        @keyframes pulse-delete {
+            0% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
 
         .item-card.selected {
@@ -218,6 +232,11 @@
             margin-top: 4px;
         }
 
+        .btn-delete-mode {
+            background-color: #e74c3c !important;
+            color: white !important;
+        }
+
         .section-title {
             margin: 12px 0 8px 0;
             font-size: 1em;
@@ -238,6 +257,20 @@
         .addition-total span {
             font-size: 1.3em;
             font-weight: bold;
+        }
+
+        .delete-banner {
+            background-color: #e74c3c;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        body.delete-mode .delete-banner {
+            display: block;
         }
     </style>
 </head>
@@ -266,9 +299,10 @@
         </div>
 
         <div class="form-group">
-            <label>Affichage</label>
+            <label>Affichage & Outils</label>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="toggleTheme()">Changer Sombre / Clair</button>
             <button class="btn-action" style="background:var(--card-bg); color:var(--text-color);" onclick="changeFontSize()">Changer la taille du texte</button>
+            <button class="btn-action btn-delete-mode" id="deleteModeBtn" onclick="toggleDeleteMode()">Activer le mode Suppression (Double-clic)</button>
         </div>
 
         <div class="section-title">Ajouter une catégorie</div>
@@ -311,6 +345,7 @@
     let dishes = JSON.parse(localStorage.getItem('app_dishes')) || [];
     let order = JSON.parse(localStorage.getItem('app_order')) || [];
     let currentView = 'home';
+    let isDeleteMode = false;
 
     function saveData() {
         localStorage.setItem('app_categories', JSON.stringify(categories));
@@ -328,32 +363,104 @@
         return yiq >= 128 ? '#000000' : '#ffffff';
     }
 
+    function toggleDeleteMode() {
+        isDeleteMode = !isDeleteMode;
+        const btn = document.getElementById('deleteModeBtn');
+        if (isDeleteMode) {
+            document.body.classList.add('delete-mode');
+            btn.textContent = 'Désactiver le mode Suppression';
+            btn.style.backgroundColor = '#c0392b';
+        } else {
+            document.body.classList.remove('delete-mode');
+            btn.textContent = 'Activer le mode Suppression (Double-clic)';
+            btn.style.backgroundColor = '#e74c3c';
+        }
+        toggleOverlay();
+        render();
+    }
+
+    function handleElementClick(type, id) {
+        if (isDeleteMode) {
+            // Ne fait rien au clic simple en mode suppression, on attend le double-clic
+            return;
+        }
+        
+        if (type === 'category') {
+            openCategory(id);
+        } else if (type === 'dish') {
+            // Ajout direct avec animation d'enfoncement gérée par le CSS :active, puis retour accueil
+            const dish = dishes.find(d => d.id === id);
+            if (dish) {
+                order.push(dish);
+                saveData();
+                setTimeout(() => {
+                    goHome();
+                }, 150); // Petit délai pour laisser voir l'effet visuel d'enfoncement
+            }
+        } else if (type === 'order_item') {
+            // Dans l'addition, cliquer permet de retirer le plat
+            const index = order.findIndex(o => o.id === id);
+            if (index > -1) {
+                order.splice(index, 1);
+                saveData();
+                render();
+            }
+        }
+    }
+
+    function handleElementDoubleClick(type, id) {
+        if (!isDeleteMode) return;
+
+        if (type === 'category') {
+            const cat = categories.find(c => c.id === id);
+            if (cat && confirm(`Voulez-vous vraiment supprimer la catégorie "${cat.name}" et tous ses plats associés ?`)) {
+                categories = categories.filter(c => c.id !== id);
+                dishes = dishes.filter(d => d.category !== id);
+                saveData();
+                render();
+            }
+        } else if (type === 'dish') {
+            const dish = dishes.find(d => d.id === id);
+            if (dish && confirm(`Voulez-vous vraiment supprimer le plat "${dish.name}" ?`)) {
+                dishes = dishes.filter(d => d.id !== id);
+                order = order.filter(o => o.id !== id);
+                saveData();
+                render();
+            }
+        }
+    }
+
     function render() {
         updateCategorySelect();
         const content = document.getElementById('mainContent');
         content.innerHTML = '';
 
+        let bannerHtml = `<div class="delete-banner">⚠️ MODE SUPPRESSION ACTIF : Double-cliquez sur un élément pour le supprimer.</div>`;
+
         if (currentView === 'home') {
+            let html = bannerHtml;
             if (categories.length === 0) {
-                content.innerHTML = `<p style="text-align:center; margin-top:40px;">Aucune catégorie pour le moment.<br>Ouvrez le menu ☰ en bas pour en créer une !</p>`;
+                html += `<p style="text-align:center; margin-top:40px;">Aucune catégorie pour le moment.<br>Ouvrez le menu ☰ en bas pour en créer une !</p>`;
             } else {
-                let gridHtml = '<div class="grid-container">';
+                html += '<div class="grid-container">';
                 categories.forEach(cat => {
                     const textColor = getContrastColor(cat.color);
-                    gridHtml += `<div class="category-box" style="background-color: ${cat.color}; color: ${textColor};" onclick="openCategory('${cat.id}')">
+                    html += `<div class="category-box" style="background-color: ${cat.color}; color: ${textColor};" 
+                        onclick="handleElementClick('category', '${cat.id}')" 
+                        ondblclick="handleElementDoubleClick('category', '${cat.id}')">
                         ${cat.name}
                     </div>`;
                 });
-                gridHtml += '</div>';
-                content.innerHTML = gridHtml;
+                html += '</div>';
             }
+            content.innerHTML = html;
         } else if (currentView.startsWith('category_')) {
             const catId = currentView.replace('category_', '');
             const cat = categories.find(c => c.id === catId);
-            // Comparaison stricte des identifiants de catégorie
             const filteredDishes = dishes.filter(d => String(d.category) === String(catId));
 
-            let html = `<h2>${cat ? cat.name : 'Catégorie'}</h2>`;
+            let html = bannerHtml;
+            html += `<h2>${cat ? cat.name : 'Catégorie'}</h2>`;
             html += `<button class="btn-action" style="margin-bottom:15px; width:auto;" onclick="goHome()">← Retour</button>`;
             
             if (filteredDishes.length === 0) {
@@ -361,10 +468,11 @@
             } else {
                 html += '<div class="grid-container">';
                 filteredDishes.forEach(dish => {
-                    const isInOrder = order.some(o => o.id === dish.id);
                     const cardColor = dish.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
-                    html += `<div class="item-card ${isInOrder ? 'selected' : ''}" style="background-color: ${cardColor}; color: ${textColor};" onclick="toggleOrderItem('${dish.id}')">
+                    html += `<div class="item-card" style="background-color: ${cardColor}; color: ${textColor};" 
+                        onclick="handleElementClick('dish', '${dish.id}')" 
+                        ondblclick="handleElementDoubleClick('dish', '${dish.id}')">
                         <div><strong>${dish.name}</strong></div>
                         <div style="margin-top: 5px; font-size: 0.9em;">${dish.price} €</div>
                     </div>`;
@@ -373,7 +481,8 @@
             }
             content.innerHTML = html;
         } else if (currentView === 'addition') {
-            let html = `<h2>Addition</h2>`;
+            let html = bannerHtml;
+            html += `<h2>Addition</h2>`;
             html += `<button class="btn-action" style="margin-bottom:15px; width:auto;" onclick="goHome()">← Retour au menu</button>`;
             
             let total = 0;
@@ -385,8 +494,10 @@
                     total += parseFloat(item.price);
                     const cardColor = item.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
-                    html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" onclick="toggleOrderItem('${item.id}')">
+                    html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" 
+                        onclick="handleElementClick('order_item', '${item.id}')">
                         <div><strong>${item.name}</strong></div>
+                        <div style="margin-top: 5px; font-size: 0.9em;">(Cliquer pour retirer)</div>
                         <div style="margin-top: 5px; font-size: 0.9em;">${item.price} €</div>
                     </div>`;
                 });
@@ -430,18 +541,6 @@
 
     function goHome() {
         currentView = 'home';
-        render();
-    }
-
-    function toggleOrderItem(dishId) {
-        const index = order.findIndex(o => o.id === dishId);
-        if (index > -1) {
-            order.splice(index, 1);
-        } else {
-            const dish = dishes.find(d => d.id === dishId);
-            if (dish) order.push(dish);
-        }
-        saveData();
         render();
     }
 
