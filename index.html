@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Application de Commandes</title>
     
-    <!-- Configuration Web App PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -76,6 +75,12 @@
             gap: 15px;
         }
 
+        .order-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
         .category-box, .item-card {
             border: 3px solid var(--border-color);
             border-radius: 12px;
@@ -95,13 +100,59 @@
             -webkit-user-select: none;
         }
 
+        .order-card {
+            border: 3px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .order-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .qty-btn {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .qty-btn:active {
+            transform: scale(0.9);
+        }
+
         .category-box:active, .item-card:active {
             transform: translateY(4px) scale(0.97);
             box-shadow: inset 0 6px 10px rgba(0,0,0,0.3);
         }
 
         body.delete-mode .category-box, 
-        body.delete-mode .item-card {
+        body.delete-mode .item-card,
+        body.delete-mode .order-card {
             border-color: #ff4757 !important;
             animation: pulse-delete 1s infinite alternate;
         }
@@ -111,18 +162,13 @@
             100% { opacity: 0.6; }
         }
 
-        .item-card.selected {
-            border-color: var(--selected-border);
-            box-shadow: inset 0 0 0 3px var(--selected-border), 0 4px 6px rgba(0,0,0,0.1);
-        }
-
         .detail-btn {
-            font-size: 0.75em;
+            font-size: 0.85em;
             font-weight: bold;
             text-decoration: underline;
-            margin-top: 6px;
             cursor: pointer;
             display: inline-block;
+            margin-top: 4px;
         }
 
         .toast-notification {
@@ -240,6 +286,22 @@
             color: var(--text-color);
             resize: none;
             font-size: 0.95em;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
         }
 
         .ticket-preview {
@@ -392,9 +454,6 @@
             user-select: none;
             -webkit-user-select: none;
             opacity: 0.7;
-        }
-        .toggle-password-btn:hover {
-            opacity: 1;
         }
 
         .btn-action {
@@ -573,9 +632,22 @@
     <!-- Modal pour les notes/spécialités -->
     <div class="note-modal-overlay" id="noteModal">
         <div class="note-modal-content">
-            <h3>Ajouter une note / spécialité</h3>
-            <p id="noteModalDishName" style="font-size: 0.9em; opacity: 0.8;"></p>
-            <textarea id="dishNoteInput" placeholder="Ex: Sans oignon, cuisson à point..."></textarea>
+            <h3>Ajouter une note / cuisson</h3>
+            <p id="noteModalDishName" style="font-size: 0.9em; opacity: 0.8; font-weight: bold;"></p>
+            
+            <textarea id="dishNoteInput" placeholder="Ex: Saignant, sans oignons, bien cuit..."></textarea>
+            
+            <div id="splitNoteOption" class="radio-group" style="display:none;">
+                <label class="radio-option">
+                    <input type="radio" name="splitScope" value="all" checked>
+                    <span>Appliquer à tous les exemplaires</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="splitScope" value="single">
+                    <span>Appliquer à 1 seul exemplaire (séparer le plat)</span>
+                </label>
+            </div>
+
             <div class="modal-buttons">
                 <button class="modal-btn btn-confirm-delete" style="background-color: #2ecc71;" onclick="saveDishNote()">Valider</button>
                 <button class="modal-btn" onclick="closeNoteModal()">Annuler</button>
@@ -637,7 +709,6 @@
         <div class="form-group">
             <label>Catégorie</label>
             <select id="newDishCategory">
-                <!-- Dynamique -->
             </select>
         </div>
         <button class="btn-action" onclick="addDish()">Ajouter le plat</button>
@@ -903,9 +974,28 @@
                     });
                 }
                 saveData();
-                showToastMsg(dish.name + " ajouté à la commande !");
+                showToastMsg(dish.name + " ajouté !");
             }
         }
+    }
+
+    /* Gestion des quantités dans la commande (+ / -) */
+    function adjustQuantity(index, delta, event) {
+        if (event) event.stopPropagation();
+        if (isDeleteMode) {
+            openLongPressModal(index);
+            return;
+        }
+
+        const item = order[index];
+        if (!item) return;
+
+        item.quantity = (item.quantity || 1) + delta;
+        if (item.quantity <= 0) {
+            order.splice(index, 1);
+        }
+        saveData();
+        render();
     }
 
     function startDishLongPress(dishId) {
@@ -1006,8 +1096,18 @@
     function openNoteModal(index) {
         targetNoteIndex = index;
         const item = order[index];
-        document.getElementById('noteModalDishName').textContent = `${item.name} ${item.quantity > 1 ? 'x' + item.quantity : ''}`;
+        const qty = item.quantity || 1;
+
+        document.getElementById('noteModalDishName').textContent = `${item.name} (Qté : ${qty})`;
         document.getElementById('dishNoteInput').value = item.note || '';
+        
+        const splitOption = document.getElementById('splitNoteOption');
+        if (qty > 1) {
+            splitOption.style.display = 'flex';
+        } else {
+            splitOption.style.display = 'none';
+        }
+
         document.getElementById('noteModal').classList.add('open');
     }
 
@@ -1019,14 +1119,34 @@
     function saveDishNote() {
         if (targetNoteIndex !== null && order[targetNoteIndex]) {
             const noteText = document.getElementById('dishNoteInput').value.trim();
-            order[targetNoteIndex].note = noteText;
+            const currentItem = order[targetNoteIndex];
+            const qty = currentItem.quantity || 1;
+            
+            const splitScopeRadios = document.getElementsByName('splitScope');
+            let scope = 'all';
+            for (let r of splitScopeRadios) {
+                if (r.checked) scope = r.value;
+            }
+
+            if (qty > 1 && scope === 'single') {
+                currentItem.quantity -= 1;
+                
+                const newItem = {
+                    ...currentItem,
+                    quantity: 1,
+                    note: noteText
+                };
+                order.splice(targetNoteIndex + 1, 0, newItem);
+            } else {
+                currentItem.note = noteText;
+            }
+
             saveData();
             render();
         }
         closeNoteModal();
     }
 
-    /* Ticket Caisse Client (avec prix) */
     function generateThermalTicketText() {
         let text = `================================\n`;
         text += `        ${restaurantName}\n`;
@@ -1050,7 +1170,6 @@
         return text;
     }
 
-    /* Ticket Cuisine pour les cuistots (sans prix, centré sur la préparation) */
     function generateKitchenTicketText() {
         let text = `================================\n`;
         text += `       BON DE CUISINE          \n`;
@@ -1083,7 +1202,6 @@
         }
     }
 
-    /* Affiche l'aperçu du bon de cuisine et le bouton pour valider l'envoi */
     function showKitchenPreview() {
         const text = generateKitchenTicketText();
         const previewEl = document.getElementById('ticketPreviewContainer');
@@ -1100,7 +1218,6 @@
         previewEl.scrollIntoView({ behavior: 'smooth' });
     }
 
-    /* Finalise, copie le bon de cuisine et vide la commande */
     function finishAndSendOrder() {
         const text = generateKitchenTicketText();
         navigator.clipboard.writeText(text).then(() => {
@@ -1187,7 +1304,7 @@
             if (order.length === 0) {
                 html += `<p style="text-align:center; margin-top:20px;">Aucune commande en cours.</p>`;
             } else {
-                html += '<div class="grid-container">';
+                html += '<div class="order-list-container">';
                 order.forEach((item, index) => {
                     const qty = item.quantity || 1;
                     const itemTotal = parseFloat(item.price) * qty;
@@ -1195,23 +1312,35 @@
                     const cardColor = item.color || '#ffffff';
                     const textColor = getContrastColor(cardColor);
                     
-                    html += `<div class="item-card selected" style="background-color: ${cardColor}; color: ${textColor};" 
+                    html += `<div class="order-card" style="background-color: ${cardColor}; color: ${textColor};"
                         onmousedown="startLongPress(${index}, event)" 
                         onmouseup="cancelLongPress()" 
                         onmouseleave="cancelLongPress()"
                         ontouchstart="startLongPress(${index}, event)" 
                         ontouchend="cancelLongPress()">
-                        <div><strong>${item.name} ${qty > 1 ? `x${qty}` : ''}</strong></div>
-                        ${item.note ? `<div style="font-size:0.8em; margin-top:2px; font-style:italic;">Note: ${item.note}</div>` : ''}
-                        <div style="margin-top: 2px; font-size: 0.9em;">${itemTotal.toFixed(2)} €</div>
-                        <span class="detail-btn" onclick="event.stopPropagation(); openNoteModal(${index})">détail</span>
+                        
+                        <div class="order-card-header">
+                            <span>${item.name}</span>
+                            <span>${itemTotal.toFixed(2)} €</span>
+                        </div>
+
+                        ${item.note ? `<div style="font-size:0.85em; font-style:italic;">└► Note: ${item.note}</div>` : ''}
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                            <div class="qty-controls">
+                                <button class="qty-btn" onclick="adjustQuantity(${index}, -1, event)">-</button>
+                                <span style="font-weight:bold; min-width:20px; text-align:center;">${qty}</span>
+                                <button class="qty-btn" onclick="adjustQuantity(${index}, 1, event)">+</button>
+                            </div>
+                            <span class="detail-btn" onclick="event.stopPropagation(); openNoteModal(${index})">détail / note</span>
+                        </div>
                     </div>`;
                 });
                 html += '</div>';
             }
             
             html += `<div class="addition-total">
-                PRIX : <span>${total.toFixed(2)} €</span>
+                PRIX TOTAL : <span>${total.toFixed(2)} €</span>
             </div>`;
             
             if(order.length > 0) {
@@ -1298,7 +1427,7 @@
             render();
             toggleOverlay();
         } else {
-            alert('Veuillez remplir tous les champs et vous assurer qu\'une catégorie est sélectionnée.');
+            alert('Veuillez remplir tous les champs.');
         }
     }
 
