@@ -95,9 +95,10 @@
             -webkit-user-select: none;
         }
 
+        /* Effet de renfoncement amélioré */
         .category-box:active, .item-card:active {
-            transform: scale(0.95);
-            box-shadow: inset 0 4px 6px rgba(0,0,0,0.2);
+            transform: translateY(4px) scale(0.97);
+            box-shadow: inset 0 6px 10px rgba(0,0,0,0.3);
         }
 
         body.delete-mode .category-box, 
@@ -911,9 +912,8 @@
                     });
                 }
                 saveData();
-                setTimeout(() => {
-                    goHome();
-                }, 150);
+                // Suppression de la redirection, on affiche juste une notification
+                showToastMsg(dish.name + " ajouté à la commande !");
             }
         }
     }
