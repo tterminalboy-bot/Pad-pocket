@@ -95,7 +95,6 @@
             -webkit-user-select: none;
         }
 
-        /* Effet de renfoncement amélioré */
         .category-box:active, .item-card:active {
             transform: translateY(4px) scale(0.97);
             box-shadow: inset 0 6px 10px rgba(0,0,0,0.3);
@@ -126,7 +125,6 @@
             display: inline-block;
         }
 
-        /* Toast notification */
         .toast-notification {
             position: absolute;
             top: 0;
@@ -148,7 +146,6 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* Modals */
         .modal-overlay {
             position: absolute;
             top: 0;
@@ -373,7 +370,6 @@
             font-size: 0.95em;
         }
 
-        /* Style spécifique pour le champ mot de passe avec œil */
         .password-wrapper {
             position: relative;
             display: flex;
@@ -482,7 +478,7 @@
         </button>
     </div>
 
-    <!-- Modal Sauvegarde (Définition du mot de passe) -->
+    <!-- Modal Sauvegarde -->
     <div class="modal-overlay" id="saveBackupModal">
         <div class="modal-content">
             <h3>🔒 Sauvegarder vos plats</h3>
@@ -512,7 +508,7 @@
         </div>
     </div>
 
-    <!-- Modal Restauration (Chargement de la sauvegarde) -->
+    <!-- Modal Restauration -->
     <div class="modal-overlay" id="loadBackupModal">
         <div class="modal-content">
             <h3>📥 Restaurer / Importer</h3>
@@ -595,7 +591,6 @@
             <button class="close-btn" onclick="toggleOverlay()">Fermer</button>
         </div>
 
-        <!-- Section Sauvegarde -->
         <div class="cloud-box">
             <strong style="font-size:0.9em;">🔐 Sauvegarde Sécurisée</strong>
             <button class="btn-action" style="background-color: #2ecc71;" onclick="openSaveBackupModal()">💾 Sauvegarder mes plats (avec mot de passe)</button>
@@ -689,7 +684,6 @@
         saveData();
     }
 
-    /* Fonction Affichage/Masquage Mot de Passe */
     function togglePasswordVisibility(inputId, btn) {
         const input = document.getElementById(inputId);
         if (input.type === 'password') {
@@ -701,7 +695,6 @@
         }
     }
 
-    /* Modals & Système de Sauvegarde/Import */
     function openSaveBackupModal() {
         document.getElementById('savePass1').value = '';
         document.getElementById('savePass2').value = '';
@@ -724,7 +717,6 @@
         document.getElementById('loadBackupModal').classList.remove('open');
     }
 
-    // Algorithme d'encodage/décodage simple avec mot de passe
     function cipherData(str, pass) {
         let result = '';
         for (let i = 0; i < str.length; i++) {
@@ -823,7 +815,6 @@
         reader.readAsText(file);
     }
 
-    /* Gestion du Mode Plein Écran */
     function toggleFullscreen() {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
             let docEl = document.documentElement;
@@ -912,13 +903,11 @@
                     });
                 }
                 saveData();
-                // Suppression de la redirection, on affiche juste une notification
                 showToastMsg(dish.name + " ajouté à la commande !");
             }
         }
     }
 
-    /* Appui Prolongé */
     function startDishLongPress(dishId) {
         isLongPressTriggered = false;
         longPressTimer = setTimeout(() => {
@@ -1083,13 +1072,14 @@
         }, 1200);
     }
 
+    /* Durée d'affichage du message réduite à 1000 ms (1 seconde) */
     function showToastMsg(msg) {
         const toast = document.getElementById('toastNotification');
         toast.textContent = msg;
         toast.classList.add('show');
         setTimeout(() => {
             toast.classList.remove('show');
-        }, 2500);
+        }, 1000);
     }
 
     function render() {
