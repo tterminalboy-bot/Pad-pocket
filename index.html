@@ -1026,6 +1026,7 @@
         closeNoteModal();
     }
 
+    /* Ticket Caisse Client (avec prix) */
     function generateThermalTicketText() {
         let text = `================================\n`;
         text += `        ${restaurantName}\n`;
@@ -1049,10 +1050,28 @@
         return text;
     }
 
+    /* Ticket Cuisine pour les cuistots (sans prix, centré sur la préparation) */
+    function generateKitchenTicketText() {
+        let text = `================================\n`;
+        text += `       BON DE CUISINE          \n`;
+        text += `================================\n`;
+        text += `Heure: ${new Date().toLocaleTimeString()}\n`;
+        text += `--------------------------------\n`;
+        order.forEach(item => {
+            const qty = item.quantity || 1;
+            text += `[ ] ${qty}x ${item.name.toUpperCase()}\n`;
+            if (item.note) {
+                text += `    └► NOTE: ${item.note}\n`;
+            }
+        });
+        text += `================================\n`;
+        return text;
+    }
+
     function copyTicketToClipboard() {
         const text = generateThermalTicketText();
         navigator.clipboard.writeText(text).then(() => {
-            showToastMsg("Ticket copié dans le presse-papier !");
+            showToastMsg("Ticket caisse copié !");
         }).catch(() => {
             prompt("Copiez le texte ci-dessous :", text);
         });
@@ -1060,19 +1079,43 @@
         const previewEl = document.getElementById('ticketPreviewContainer');
         if (previewEl) {
             previewEl.textContent = text;
+            previewEl.style.display = 'block';
         }
     }
 
-    function finalizeOrder() {
-        copyTicketToClipboard();
+    /* Affiche l'aperçu du bon de cuisine et le bouton pour valider l'envoi */
+    function showKitchenPreview() {
+        const text = generateKitchenTicketText();
+        const previewEl = document.getElementById('ticketPreviewContainer');
+        const finishBtn = document.getElementById('finishOrderBtn');
+        
+        if (previewEl) {
+            previewEl.textContent = text;
+            previewEl.style.display = 'block';
+        }
+        if (finishBtn) {
+            finishBtn.style.display = 'block';
+        }
+        
+        previewEl.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /* Finalise, copie le bon de cuisine et vide la commande */
+    function finishAndSendOrder() {
+        const text = generateKitchenTicketText();
+        navigator.clipboard.writeText(text).then(() => {
+            showToastMsg("Bon cuisine copié & Commande envoyée !");
+        }).catch(() => {
+            showToastMsg("Commande terminée !");
+        });
+
         order = [];
         saveData();
         setTimeout(() => {
-            render();
-        }, 1200);
+            goHome();
+        }, 1000);
     }
 
-    /* Durée d'affichage du message réduite à 1000 ms (1 seconde) */
     function showToastMsg(msg) {
         const toast = document.getElementById('toastNotification');
         toast.textContent = msg;
@@ -1172,9 +1215,10 @@
             </div>`;
             
             if(order.length > 0) {
-                html += `<button class="btn-action" style="margin-top:15px; background-color:#34495e;" onclick="copyTicketToClipboard()">📋 Copier le texte du ticket</button>`;
-                html += `<button class="btn-action" style="margin-top:10px; background-color:#2ecc71;" onclick="finalizeOrder()"> Finaliser & Copier le ticket</button>`;
-                html += `<div class="ticket-preview" id="ticketPreviewContainer">Aperçu du ticket...</div>`;
+                html += `<button class="btn-action" style="margin-top:15px; background-color:#34495e;" onclick="copyTicketToClipboard()">📋 Copier le ticket de caisse</button>`;
+                html += `<button class="btn-action" style="margin-top:10px; background-color:#e67e22;" onclick="showKitchenPreview()">👨‍🍳 Finaliser la commande (Bon cuisine)</button>`;
+                html += `<div class="ticket-preview" id="ticketPreviewContainer" style="display:none;"></div>`;
+                html += `<button class="btn-action" id="finishOrderBtn" style="margin-top:12px; background-color:#2ecc71; display:none;" onclick="finishAndSendOrder()">🚀 Terminer la commande & Envoyer</button>`;
             }
             
             content.innerHTML = html;
